@@ -7,24 +7,14 @@
 #include<Windows.h>
 #include<string>
 
-
 using namespace std;
 
 
-int* arr;
-int* arr2;
-const int N = 6*1E6;
+int* arr, *arr2;//2 массива для сортировки(1 параллельно, 2 последовательно)
+const int N = 6 * 1E6;//размер массивов
 
-//функция сравнения для qsort(заголовок)
+//функция сравнения для qsort
 int cmp(const void *a1, const void *b1);
-
-//параллельная сортировка(возвращает время работы
-void notParallelSort()
-{
-	qsort(arr2, N, sizeof(int), cmp);
-}
-
-
 //инициализация(заполнение массивов)
 void init();
 //проверка массива на отсортированность
@@ -33,14 +23,25 @@ bool arrSorted(int* ar, int n);
 bool arrCmp(int* ar1, int *ar2, int n);
 //вывод массива
 void printArr(int*a, int n);
-//слияние двух сортированых массивов в один сортированый(заголовок)
+//слияние двух сортированых массивов в один сортированый
 int* sortedArrayMerge(int *a1, int n, int*a2, int m);
+//смена кодировки для символа
+char changeFunckingCharCode(char c);
+//смена кодировки для строчки
+string changeFunckingStrCode(string s);
+
+
+
+//параллельная сортировка
+void notParallelSort()
+{
+	qsort(arr2, N, sizeof(int), cmp);
+}
 
 //функция для одной итерации параллельной сортировки
-void mySort(int trNum, int iterNum, int trCount, int* my_arr, int my_n)
+void paralleIteration(int trNum, int iterNum, int trCount, int* my_arr, int my_n)
 {
-
-	bool us_next = trNum % 2 == iterNum % 2;
+	bool us_next = trNum % 2 == iterNum % 2;//тру - в паре со следующий процессом, фалс - с предыдущим
 
 	int parTrNum = -1;
 	if (us_next)
@@ -48,29 +49,31 @@ void mySort(int trNum, int iterNum, int trCount, int* my_arr, int my_n)
 	else
 		parTrNum = trNum - 1;
 
-	if (parTrNum < 0 || parTrNum >= trCount)
+	if (parTrNum < 0 || parTrNum >= trCount)//не с кем обмениваться
 		return;
 
-	int*ar2 = new int[my_n];
+	int*ar2 = new int[my_n];//буфер от парного процесса
+
 	//всегда поток с меньшим номером отправляет свою часть потоку с большим номером
 	//затем наоборот
 	int id = min(trNum, parTrNum) + 10 * max(trNum, parTrNum);
 	MPI_Status sts;
+	//прямой обмен
 	if (us_next)
 		MPI_Send(my_arr, my_n, MPI_INT, parTrNum, id, MPI_COMM_WORLD);
 	else
 		MPI_Recv(ar2, my_n, MPI_INT, parTrNum, id, MPI_COMM_WORLD, &sts);
 
-	//потом обратно
+	//обратный
 	if (!us_next)
 		MPI_Send(my_arr, my_n, MPI_INT, parTrNum, id, MPI_COMM_WORLD);
-
 	else
 		MPI_Recv(ar2, my_n, MPI_INT, parTrNum, id, MPI_COMM_WORLD, &sts);
 
 
-	int* all_ar = sortedArrayMerge(my_arr, my_n, ar2, my_n);
+	int* all_ar = sortedArrayMerge(my_arr, my_n, ar2, my_n);//общий массив
 
+	//оставляем себе или начало или конец
 	if (us_next)
 		for (int i = 0; i < my_n; i++)
 			my_arr[i] = all_ar[i];
@@ -93,53 +96,30 @@ void parallelSort(int rank, int size)
 		my_n++;
 		if (rank == 0)
 		{
-			int* arrTmp = new int[my_n*size];
-			for (int i = 0; i < N; i++)
-				arrTmp[i] = arr[i];
+			//добавляем размер до нужного
+			arr = (int*)realloc(arr, sizeof(int)*my_n*size);
 			//добавляем в арр  чтобы делилось
-			//arr = (int*)realloc(arr, my_n*size);
 			for (int i = N; i < my_n*size; i++)
-				arrTmp[i] = INT_MAX;
-			arr = arrTmp;
+				arr[i] = INT_MAX;
 		}
 	}
-
+	//массив в процессе
 	int *my_arr = new int[my_n];
-	//if(rank==0)
-	//printArr(arr, my_n*size);
 
 	//рассылаем с 0 на остальные
 	MPI_Scatter(arr, my_n, MPI_INT, my_arr, my_n, MPI_INT, 0, MPI_COMM_WORLD);
 
-
 	//сортируем на этом процессе
 	qsort(my_arr, my_n, sizeof(int), cmp);
 
-	//MPI_Barrier(MPI_COMM_WORLD);
-
+	//итерации сортировки
 	for (int i = 0; i < size; i++)
-	{
-		//cout << "iter"<<i<<" tr" << rank << endl;
-		//printArr(my_arr, my_n);
-
-		mySort(rank, i, size, my_arr, my_n);
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
-
-	//MPI_Barrier(MPI_COMM_WORLD);
-
-	//cout << "end " << " tr" << rank << endl;
-	//printArr(my_arr, my_n);
+		paralleIteration(rank, i, size, my_arr, my_n);
 
 	//собираем со всех процессов в один массив на 0 потоке
 	MPI_Gather(my_arr, my_n, MPI_INT, arr, my_n, MPI_INT, 0, MPI_COMM_WORLD);
 
-	MPI_Barrier(MPI_COMM_WORLD);
-
 }
-
-char changeFunckingCharCode(char c);
-string changeFunckingStrCode(string s);
 
 void laba(int argc, char **argv)
 {
@@ -159,7 +139,6 @@ void laba(int argc, char **argv)
 	if (rank == 0)
 	{
 		init();
-		//printArr(arr, N);
 	}
 
 	//последовательная сортировка только на 1 процессе
@@ -168,19 +147,14 @@ void laba(int argc, char **argv)
 		start = std::chrono::steady_clock::now();
 		notParallelSort();
 		end = std::chrono::steady_clock::now();
-		//cout << "sorted" << endl;
-		//printArr(arr2, N);
 		no_par_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	}
 
-
-	MPI_Barrier(MPI_COMM_WORLD);
 	if (rank == 0)
 		start = std::chrono::steady_clock::now();//запуск расчета на 0
 
 	parallelSort(rank, size);//параллельная сортирвока
 
-	//MPI_Barrier(MPI_COMM_WORLD);
 	if (rank == 0)
 	{
 		end = std::chrono::steady_clock::now();//конец расчета на 0
@@ -193,74 +167,26 @@ void laba(int argc, char **argv)
 	{
 
 		if (arrSorted(arr, N))
-			cout <<  changeFunckingStrCode("Массив отсортирован");
+			cout << changeFunckingStrCode("Массив отсортирован");
 		else
 			cout << "WTF?";
 		cout << endl;
 
-		cout << changeFunckingStrCode( "Последовательное время " )<< no_par_time << changeFunckingStrCode(" мс") << endl;
-		cout <<changeFunckingStrCode( "Параллельное время ") << par_time << changeFunckingStrCode( " мс") << endl;
-		cout << changeFunckingStrCode( "Ускорение " )<< no_par_time - par_time <<  changeFunckingStrCode(" мс") << endl;
-		cout << changeFunckingStrCode( "Сравнение массивов " )<< arrCmp(arr, arr2, N) << endl;
-		cout << changeFunckingStrCode( "Использовано потоков " )<< size << endl;
-		cout << changeFunckingStrCode( "Размер массива " )<< N << endl;
+		cout << changeFunckingStrCode("Последовательное время ") << no_par_time << changeFunckingStrCode(" мс") << endl;
+		cout << changeFunckingStrCode("Параллельное время ") << par_time << changeFunckingStrCode(" мс") << endl;
+		cout << changeFunckingStrCode("Ускорение ") << no_par_time - par_time << changeFunckingStrCode(" мс") << endl;
+		cout << changeFunckingStrCode("Сравнение массивов ") << arrCmp(arr, arr2, N) << endl;
+		cout << changeFunckingStrCode("Использовано потоков ") << size << endl;
+		cout << changeFunckingStrCode("Размер массива ") << N << endl;
 		system("pause");
 	}
 
 }
-
-
-void test(int argc, char **argv)
-{
-	//номер процесса, кол-во
-	int rank, size;
-	
-
-	MPI_Init(&argc, &argv);
-	//получили
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-
-	if (rank == 0)
-	{
-		//SetConsoleCP(1251);
-		//SetConsoleOutputCP(1251);
-		//printArr(arr, N);
-	
-		
-
-		for (int i = 128; i < 256; i++)
-			cout << i << "  " << char(i) << endl;
-
-		string alph = "абвгдежзийклмнопрстуфхцчущяючбяц93пр98";
-		//for (int i = 0; i < alph.length(); i++)
-			//cout << 255+(int)alph[i] << " " << alph[i] << "  " << 255+(int)changeFunckingCharCode(alph[i]) <<"  "<< changeFunckingCharCode(alph[i]) << endl;
-		cout << alph << endl;
-		cout << changeFunckingStrCode(alph) << endl;
-
-		//for (int c = 128; c <= 255; c++)
-			//cout << (char)c<<" "<<(int)c << " " << 255+(int)changeFunckingCharCode(c) << " " << changeFunckingCharCode(c) << endl;
-		//cout << endl;
-
-		//for (char c = 'А'; c <= 'Я'; c++)
-			//cout << changeFunckingCharCode(c);
-		//cout << endl;
-
-			
-		system("pause");
-	}
-	MPI_Finalize();
-}
-
-
-
-
 
 int main(int argc, char **argv)
 {
 	laba(argc, argv);
-	
+
 	return 0;
 }
 
@@ -308,7 +234,7 @@ void init()
 	arr2 = new int[N];
 	srand(unsigned(time(0)));
 	for (int i = 0; i < N; i++)
-		arr2[i] = arr[i] = rand() % 10;
+		arr2[i] = arr[i] = rand();
 }
 
 bool arrSorted(int* ar, int n)
