@@ -3,13 +3,17 @@
 #include<time.h>
 #include<algorithm>
 #include<chrono>
+#include<locale.h>
+#include<Windows.h>
+#include<string>
+
 
 using namespace std;
 
 
 int* arr;
 int* arr2;
-const int N = 60000;
+const int N = 6*1E6;
 
 //функция сравнения для qsort(заголовок)
 int cmp(const void *a1, const void *b1);
@@ -134,8 +138,10 @@ void parallelSort(int rank, int size)
 
 }
 
+char changeFunckingCharCode(char c);
+string changeFunckingStrCode(string s);
 
-int main(int argc, char **argv)
+void laba(int argc, char **argv)
 {
 	//номер процесса, кол-во
 	int rank, size;
@@ -164,7 +170,7 @@ int main(int argc, char **argv)
 		end = std::chrono::steady_clock::now();
 		//cout << "sorted" << endl;
 		//printArr(arr2, N);
-		no_par_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+		no_par_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	}
 
 
@@ -178,30 +184,110 @@ int main(int argc, char **argv)
 	if (rank == 0)
 	{
 		end = std::chrono::steady_clock::now();//конец расчета на 0
-		par_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+		par_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	}
 
 	MPI_Finalize();
-	
+
 	if (rank == 0)
 	{
-		//printArr(arr, N);
+
 		if (arrSorted(arr, N))
-			cout << "array sorted";
+			cout <<  changeFunckingStrCode("Массив отсортирован");
 		else
 			cout << "WTF?";
 		cout << endl;
 
-
-		cout << "no parallel time " << no_par_time << " mics" << endl;
-		cout << "parallel time " << par_time << " mics" << endl;
-		cout << "sravnenie massivov " << arrCmp(arr, arr2, N) << endl;
+		cout << changeFunckingStrCode( "Последовательное время " )<< no_par_time << changeFunckingStrCode(" мс") << endl;
+		cout <<changeFunckingStrCode( "Параллельное время ") << par_time << changeFunckingStrCode( " мс") << endl;
+		cout << changeFunckingStrCode( "Ускорение " )<< no_par_time - par_time <<  changeFunckingStrCode(" мс") << endl;
+		cout << changeFunckingStrCode( "Сравнение массивов " )<< arrCmp(arr, arr2, N) << endl;
+		cout << changeFunckingStrCode( "Использовано потоков " )<< size << endl;
+		cout << changeFunckingStrCode( "Размер массива " )<< N << endl;
 		system("pause");
 	}
 
+}
+
+
+void test(int argc, char **argv)
+{
+	//номер процесса, кол-во
+	int rank, size;
+	
+
+	MPI_Init(&argc, &argv);
+	//получили
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+
+	if (rank == 0)
+	{
+		//SetConsoleCP(1251);
+		//SetConsoleOutputCP(1251);
+		//printArr(arr, N);
+	
+		
+
+		for (int i = 128; i < 256; i++)
+			cout << i << "  " << char(i) << endl;
+
+		string alph = "абвгдежзийклмнопрстуфхцчущяючбяц93пр98";
+		//for (int i = 0; i < alph.length(); i++)
+			//cout << 255+(int)alph[i] << " " << alph[i] << "  " << 255+(int)changeFunckingCharCode(alph[i]) <<"  "<< changeFunckingCharCode(alph[i]) << endl;
+		cout << alph << endl;
+		cout << changeFunckingStrCode(alph) << endl;
+
+		//for (int c = 128; c <= 255; c++)
+			//cout << (char)c<<" "<<(int)c << " " << 255+(int)changeFunckingCharCode(c) << " " << changeFunckingCharCode(c) << endl;
+		//cout << endl;
+
+		//for (char c = 'А'; c <= 'Я'; c++)
+			//cout << changeFunckingCharCode(c);
+		//cout << endl;
+
+			
+		system("pause");
+	}
+	MPI_Finalize();
+}
+
+
+
+
+
+int main(int argc, char **argv)
+{
+	laba(argc, argv);
+	
 	return 0;
 }
 
+char changeFunckingCharCode(char c)
+{
+	if (c >= 'А'&&c <= 'Я')
+		return 128 + (c - 'А');
+
+	//a 160 п 175
+	if (c >= 'а'&&c <= 'п')
+		return 160 + (c - 'а');
+
+	//р 224
+	if (c >= 'р'&&c <= 'я')
+		return 224 + (c - 'р');
+
+	return c;
+}
+
+string changeFunckingStrCode(string s)
+{
+	string res = s;
+	for (int i = 0; i < s.length(); i++)
+		res[i] = changeFunckingCharCode(s[i]);
+
+	return res;
+}
 
 //функция сравнения для qsort(тело)
 int cmp(const void *a1, const void *b1)
