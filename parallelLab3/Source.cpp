@@ -11,7 +11,7 @@ using namespace std;
 
 
 int* arr, *arr2;//2 массива для сортировки(1 параллельно, 2 последовательно)
-const int N = 6 * 1E6;//размер массивов
+const int N = 10000;//6 * 1E6;//размер массивов
 
 //функция сравнения для qsort
 int cmp(const void *a1, const void *b1);
@@ -26,9 +26,9 @@ void printArr(int*a, int n);
 //слияние двух сортированых массивов в один сортированый
 int* sortedArrayMerge(int *a1, int n, int*a2, int m);
 //смена кодировки для символа
-char changeFunckingCharCode(char c);
+char changeCharCode(char c);
 //смена кодировки для строчки
-string changeFunckingStrCode(string s);
+string changeStrCode(string s);
 
 
 
@@ -137,9 +137,8 @@ void laba(int argc, char **argv)
 
 	//на 0 процессе создали массивы
 	if (rank == 0)
-	{
 		init();
-	}
+
 
 	//последовательная сортировка только на 1 процессе
 	if (rank == 0)
@@ -165,19 +164,22 @@ void laba(int argc, char **argv)
 
 	if (rank == 0)
 	{
+		cout << changeStrCode("Размер массива ") << N << endl;
+		cout << changeStrCode("Массив последовательно отсортирован") << endl;
 
 		if (arrSorted(arr, N))
-			cout << changeFunckingStrCode("Массив отсортирован");
+			cout << changeStrCode("Массив отсортирован параллельно") << endl;
 		else
 			cout << "WTF?";
 		cout << endl;
-
-		cout << changeFunckingStrCode("Последовательное время ") << no_par_time << changeFunckingStrCode(" мс") << endl;
-		cout << changeFunckingStrCode("Параллельное время ") << par_time << changeFunckingStrCode(" мс") << endl;
-		cout << changeFunckingStrCode("Ускорение ") << no_par_time - par_time << changeFunckingStrCode(" мс") << endl;
-		cout << changeFunckingStrCode("Сравнение массивов ") << arrCmp(arr, arr2, N) << endl;
-		cout << changeFunckingStrCode("Использовано потоков ") << size << endl;
-		cout << changeFunckingStrCode("Размер массива ") << N << endl;
+		
+		cout << changeStrCode("Последовательное время ") << no_par_time << changeStrCode(" мс") << endl;
+		cout << changeStrCode("Параллельное время ") << par_time << changeStrCode(" мс") << endl;
+		if(arrCmp(arr, arr2, N))
+		cout << changeStrCode("Сравнение массивов- массивы одинаковы")  << endl;
+		else
+			cout << changeStrCode("Массивы различны") << endl;
+		
 		system("pause");
 	}
 
@@ -190,7 +192,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-char changeFunckingCharCode(char c)
+char changeCharCode(char c)
 {
 	if (c >= 'А'&&c <= 'Я')
 		return 128 + (c - 'А');
@@ -206,11 +208,11 @@ char changeFunckingCharCode(char c)
 	return c;
 }
 
-string changeFunckingStrCode(string s)
+string changeStrCode(string s)
 {
 	string res = s;
 	for (int i = 0; i < s.length(); i++)
-		res[i] = changeFunckingCharCode(s[i]);
+		res[i] = changeCharCode(s[i]);
 
 	return res;
 }
