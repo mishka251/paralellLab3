@@ -1,5 +1,6 @@
 #include<mpi.h>
 #include<iostream>
+#include<fstream>
 #include<time.h>
 #include<algorithm>
 #include<chrono>
@@ -30,7 +31,7 @@ char changeFunckingCharCode(char c);
 //смена кодировки дл€ строчки
 string changeFunckingStrCode(string s);
 
-
+void printArr(int*a, int n, string file);
 
 //параллельна€ сортировка
 void notParallelSort()
@@ -139,6 +140,7 @@ void laba(int argc, char **argv)
 	if (rank == 0)
 	{
 		init();
+		printArr(arr, N, "input");
 	}
 
 	//последовательна€ сортировка только на 1 процессе
@@ -171,7 +173,8 @@ void laba(int argc, char **argv)
 		else
 			cout << "WTF?";
 		cout << endl;
-
+		printArr(arr, N, "out1.txt");
+		printArr(arr2, N, "out2.txt");
 		cout << changeFunckingStrCode("ѕоследовательное врем€ ") << no_par_time << changeFunckingStrCode(" мс") << endl;
 		cout << changeFunckingStrCode("ѕараллельное врем€ ") << par_time << changeFunckingStrCode(" мс") << endl;
 		cout << changeFunckingStrCode("”скорение ") << no_par_time - par_time << changeFunckingStrCode(" мс") << endl;
@@ -258,6 +261,14 @@ void printArr(int*a, int n)
 	for (int i = 0; i < n; i++)
 		cout << a[i] << " ";
 	cout << endl;
+}
+void printArr(int*a, int n, string file)
+{
+	ofstream of(file);
+	for (int i = 0; i < n; i++)
+		of << a[i] << " ";
+	of << endl;
+	of.close();
 }
 
 int* sortedArrayMerge(int *a1, int n, int*a2, int m)
